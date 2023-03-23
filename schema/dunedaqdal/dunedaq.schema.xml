@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="ASCII"?>
+
+<!-- oks-schema version 2.2 -->
+
+
+<!DOCTYPE oks-schema [
+  <!ELEMENT oks-schema (info, (include)?, (comments)?, (class)+)>
+  <!ELEMENT info EMPTY>
+  <!ATTLIST info
+      name CDATA #IMPLIED
+      type CDATA #IMPLIED
+      num-of-items CDATA #REQUIRED
+      oks-format CDATA #FIXED "schema"
+      oks-version CDATA #REQUIRED
+      created-by CDATA #IMPLIED
+      created-on CDATA #IMPLIED
+      creation-time CDATA #IMPLIED
+      last-modified-by CDATA #IMPLIED
+      last-modified-on CDATA #IMPLIED
+      last-modification-time CDATA #IMPLIED
+  >
+  <!ELEMENT include (file)+>
+  <!ELEMENT file EMPTY>
+  <!ATTLIST file
+      path CDATA #REQUIRED
+  >
+  <!ELEMENT comments (comment)+>
+  <!ELEMENT comment EMPTY>
+  <!ATTLIST comment
+      creation-time CDATA #REQUIRED
+      created-by CDATA #REQUIRED
+      created-on CDATA #REQUIRED
+      author CDATA #REQUIRED
+      text CDATA #REQUIRED
+  >
+  <!ELEMENT class (superclass | attribute | relationship | method)*>
+  <!ATTLIST class
+      name CDATA #REQUIRED
+      description CDATA ""
+      is-abstract (yes|no) "no"
+  >
+  <!ELEMENT superclass EMPTY>
+  <!ATTLIST superclass name CDATA #REQUIRED>
+  <!ELEMENT attribute EMPTY>
+  <!ATTLIST attribute
+      name CDATA #REQUIRED
+      description CDATA ""
+      type (bool|s8|u8|s16|u16|s32|u32|s64|u64|float|double|date|time|string|uid|enum|class) #REQUIRED
+      range CDATA ""
+      format (dec|hex|oct) "dec"
+      is-multi-value (yes|no) "no"
+      init-value CDATA ""
+      is-not-null (yes|no) "no"
+      ordered (yes|no) "no"
+  >
+  <!ELEMENT relationship EMPTY>
+  <!ATTLIST relationship
+      name CDATA #REQUIRED
+      description CDATA ""
+      class-type CDATA #REQUIRED
+      low-cc (zero|one) #REQUIRED
+      high-cc (one|many) #REQUIRED
+      is-composite (yes|no) #REQUIRED
+      is-exclusive (yes|no) #REQUIRED
+      is-dependent (yes|no) #REQUIRED
+      ordered (yes|no) "no"
+  >
+  <!ELEMENT method (method-implementation*)>
+  <!ATTLIST method
+      name CDATA #REQUIRED
+      description CDATA ""
+  >
+  <!ELEMENT method-implementation EMPTY>
+  <!ATTLIST method-implementation
+      language CDATA #REQUIRED
+      prototype CDATA #REQUIRED
+      body CDATA ""
+  >
+]>
+
+<oks-schema>
+
+<info name="" type="" num-of-items="9" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230321T091221"/>
+
+ <class name="Application" description="A software executable" is-abstract="yes">
+  <attribute name="Name" description="Name of the executable, including full path" type="string" init-value="Unknown" is-not-null="yes"/>
+  <relationship name="ApplicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+ <class name="Connection">
+  <attribute name="name" type="string" is-not-null="yes"/>
+  <attribute name="service_type" description="Type of the connection queue/network" type="enum" range="kQueue,kNetwork" is-not-null="yes"/>
+  <attribute name="uri" description="uri of the connection" type="string" is-not-null="yes"/>
+ </class>
+
+ <class name="DaqModule" description="A plugin module for the app framework">
+  <attribute name="plugin" description="Name of daq application plugin implementing this module" type="string" init-value="RandomListGenerator" is-not-null="yes"/>
+  <relationship name="inputs" description="List of connections to/from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="outputs" description="Output connections from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+ </class>
+
+ <class name="Parameter" description="This abstract class is used to describe a single variable (name:value pair) or a set of variables." is-abstract="yes">
+  <attribute name="Description" description="Describes the purpose of the parameter." type="string"/>
+ </class>
+
+ <class name="RCApplication" description="An executable which allows users to control datataking">
+  <superclass name="Application"/>
+  <attribute name="Timeout" description="Seconds to wait before giving up on a transition" type="u16" range="1..3600" init-value="20" is-not-null="yes"/>
+  <relationship name="ApplicationsControlled" description="Applications RC is in charge of" class-type="Application" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+ <class name="ReadoutApplication" description="An executable which reads out subdetectors">
+  <superclass name="Application"/>
+  <attribute name="host" description="Name of host where application will run" type="string" init-value="localhost" is-not-null="yes"/>
+  <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
+  <relationship name="Modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="yes" is-dependent="yes"/>
+ </class>
+
+ <class name="Session">
+  <attribute name="Description" description="A description of the session." type="string"/>
+  <relationship name="applications" description="The list of applications to be started in this Session" class-type="Application" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="ProcessEnvironment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+ <class name="Variable" description="A Variable associates a value with string name. It is used for process environment and database strings substitution.">
+  <superclass name="Parameter"/>
+  <attribute name="Name" description="Name of the variable." type="string"/>
+  <attribute name="Value" description="Default value of the variable. If TagValues is not empty, the value can be re-defined by corresponding tag in the context of the application&apos;s process environment." type="string"/>
+ </class>
+
+ <class name="VariableSet" description="Set of variables or variable sets. Names and values of all nested variables are added to value of relationship using resource set.">
+  <superclass name="Parameter"/>
+  <relationship name="Contains" description="List of included variables or variable sets." class-type="Parameter" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+</oks-schema>
