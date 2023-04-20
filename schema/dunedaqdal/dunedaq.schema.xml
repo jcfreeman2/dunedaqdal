@@ -80,7 +80,7 @@
 
 <oks-schema>
 
-<info name="" type="" num-of-items="14" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230418T101227"/>
+<info name="" type="" num-of-items="14" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230420T101835"/>
 
  <class name="Application" description="A software executable" is-abstract="yes">
   <relationship name="ApplicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
@@ -95,13 +95,14 @@
   <superclass name="Application"/>
   <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
   <attribute name="required_resources" description="List of resources this application requires from the host" type="string" is-multi-value="yes"/>
-  <attribute name="numa_node" description="Which of the numa nodes available on the host to use." type="u8" init-value="0" is-not-null="yes"/>
+  <attribute name="numa_node" description="Which of the numa nodes available on the host to use." type="u8" is-multi-value="yes" init-value="0" is-not-null="yes"/>
   <relationship name="modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="DaqModule" description="A plugin module for the app framework">
   <attribute name="plugin" description="Name of daq application plugin implementing this module" type="string" init-value="RandomListGenerator" is-not-null="yes"/>
   <attribute name="reserved_cores" description="Number of CPU cores required for exclusive use by threds of this module" type="u8" init-value="0" is-not-null="yes"/>
+  <attribute name="numa_node" description="NUMA node for threads of this module" type="s16" init-value="-1" is-not-null="yes"/>
   <relationship name="inputs" description="List of connections to/from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="outputs" description="Output connections from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
@@ -109,25 +110,30 @@
  <class name="Host">
   <attribute name="storage" description="Amount of disk storage available for output data on this host in GB" type="u32" init-value="0" is-not-null="yes"/>
   <attribute name="resources" description="Special features of this host e.g. AVX512 instructions" type="string" is-multi-value="yes"/>
-  <relationship name="network" description="Network interfaces attached to this host" class-type="NetworkInterface" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="yes" is-dependent="yes"/>
-  <relationship name="numa_nodes" class-type="NumaNode" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <relationship name="network" description="Network interfaces attached to this host" class-type="NetworkInterface" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="numa_nodes" class-type="NumaNode" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
  </class>
 
  <class name="NetworkConnection">
   <superclass name="Connection"/>
   <attribute name="connection_type" description="Type of the network connection " type="enum" range="kSendRecv,kPubSub" init-value="kSendRecv" is-not-null="yes"/>
-  <attribute name="uri" description="uri of the connection" type="string" is-not-null="yes"/>
+  <attribute name="protocol" description="Protocol of the connection tcp or udp" type="enum" range="tcp,udp" init-value="tcp" is-not-null="yes"/>
+  <attribute name="port" type="u16" is-not-null="yes"/>
+  <attribute name="uri" type="string" is-not-null="yes"/>
  </class>
 
  <class name="NetworkInterface">
-  <attribute name="address" description="IP address in form a.b.c.d" type="string" is-not-null="yes"/>
-  <attribute name="networkMask" description="Network mask in for a.b.c.d" type="string" is-multi-value="yes" is-not-null="yes"/>
+  <attribute name="address" description="IP address in form a.b.c.d" type="string"/>
+  <attribute name="networkMask" description="Network mask in for a.b.c.d" type="string" is-multi-value="yes"/>
   <attribute name="speed" description="Speed of network on this interface in Gb/s" type="u16" init-value="1" is-not-null="yes"/>
+  <attribute name="interface" description="Name of interface e.g. eth0 or eno1" type="string"/>
+  <attribute name="name" description="Name of network on this interface  Control or Data" type="enum" range="Control,Data" init-value="Control" is-not-null="yes"/>
  </class>
 
  <class name="NumaNode" description="Part of host associated with 1 NUM node">
-  <attribute name="cpu_cores" description="List of CPU cores avalable on this NUMA node. Syntax may be comma separated list or range n..m or combination of both" type="string" init-value="0..15" is-not-null="yes"/>
+  <attribute name="cpu_cores" description="List of CPU cores avalable on this NUMA node. Syntax may be comma separated list or range n..m or combination of both. If using a range the step can also be given by adding :s. For example 0..63:2 will select even numbered cores from 0 to 63" type="string" init-value="0..15" is-not-null="yes"/>
   <attribute name="resources" description="List of resources associated with this NUMA node" type="string" is-multi-value="yes"/>
+  <attribute name="Description" description="Description of this NUMA node" type="string"/>
  </class>
 
  <class name="Parameter" description="This abstract class is used to describe a single variable (name:value pair) or a set of variables." is-abstract="yes">
