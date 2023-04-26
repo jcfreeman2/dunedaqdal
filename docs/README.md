@@ -5,23 +5,20 @@ This package contains a putative 'core' schema for dunedaq OKS configuartion.
 
 ## Notes
 
-### Host and NumaNode
+### VirtualHost
 
- The idea is that these decribe the physical host server and that any
-restrictions to the list of CPU cores to be used by an application are
-specified in the Application configuartion.
+ The idea is that this decribes the subset of resources of a physical
+host server that are available to an Application. For example two
+applications may be assigned to the same physical server but each be
+allocated resources of a different NUMA node.
 
 ### DaqApplication and DaqModule
 
- The DaqApplication can be restricted to using only a subset of the
-NUMA nodes on its host by the `numa_node` list. The DaqModule can ask
-for cores for its threads to be allocated from one of the NUMA nodes
-associated with the DaqApplication.
-
-* Is this too complicated?
-* Is it error prone in that the node specified by the DaqModule may
-not be listed in the DaqApplication?
-
+ The DaqApplication contains a list of DaqModules each of which has a
+list of used resources. The DaqApplication provides a method
+`get_used_resources` which can be called by `appfwk` in order to check
+that these resources are indeed associated with the VirtualHost by
+comparing with those listed in its `hw_resources` relationship.
 
 ### NetworkConnection
 

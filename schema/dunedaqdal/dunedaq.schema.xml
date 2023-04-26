@@ -80,7 +80,7 @@
 
 <oks-schema>
 
-<info name="" type="" num-of-items="19" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230425T153618"/>
+<info name="" type="" num-of-items="18" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230426T111053"/>
 
  <class name="Application" description="A software executable" is-abstract="yes">
   <relationship name="ApplicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
@@ -95,14 +95,16 @@
   <superclass name="Application"/>
   <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
   <relationship name="modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <method name="get_used_resources" description="Get the set of all HostResources used by this application">
+   <method-implementation language="c++" prototype=" std::set&lt;const dunedaq::dal::HostResource*&gt; get_used_resources() const" body="std::set&lt;const dunedaq::dal::HostResource*&gt; res;&#xA;for (auto module :  get_modules()) {&#xA;  for (auto resource : module-&gt;get_used_resources()) {&#xA;    res.insert(resource);&#xA;  }&#xA;}&#xA;return res;&#xA;"/>
+  </method>
  </class>
 
  <class name="DaqModule" description="A plugin module for the app framework">
   <attribute name="plugin" description="Name of daq application plugin implementing this module" type="string" init-value="RandomListGenerator" is-not-null="yes"/>
   <relationship name="inputs" description="List of connections to/from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="outputs" description="Output connections from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
-  <relationship name="used_resources" class-type="HostResource" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="yes" is-dependent="yes"/>
-  <relationship name="used_cpu" class-type="ProcessingResourceClaim" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="used_resources" class-type="HostResource" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="HostResource" is-abstract="yes">
@@ -145,11 +147,6 @@
   <superclass name="HostResource"/>
   <attribute name="cpu_cores" type="u16" is-multi-value="yes" is-not-null="yes"/>
   <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
- </class>
-
- <class name="ProcessingResourceClaim">
-  <attribute name="count" description="Number of CPU cores required by this claim" type="u8" init-value="1" is-not-null="yes"/>
-  <relationship name="processor" description="ProcessingResource that this claims a part of" class-type="ProcessingResource" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="Queue">
