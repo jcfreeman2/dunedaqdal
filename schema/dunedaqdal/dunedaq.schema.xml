@@ -80,11 +80,11 @@
 
 <oks-schema>
 
-<info name="" type="" num-of-items="14" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230420T101835"/>
+<info name="" type="" num-of-items="19" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230425T153618"/>
 
  <class name="Application" description="A software executable" is-abstract="yes">
   <relationship name="ApplicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
-  <relationship name="host" description="Host to run this application on" class-type="Host" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="host" description="VirtualHost to run this application on" class-type="VirtualHost" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="Connection" is-abstract="yes">
@@ -94,24 +94,19 @@
  <class name="DaqApplication">
   <superclass name="Application"/>
   <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
-  <attribute name="required_resources" description="List of resources this application requires from the host" type="string" is-multi-value="yes"/>
-  <attribute name="numa_node" description="Which of the numa nodes available on the host to use." type="u8" is-multi-value="yes" init-value="0" is-not-null="yes"/>
   <relationship name="modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="DaqModule" description="A plugin module for the app framework">
   <attribute name="plugin" description="Name of daq application plugin implementing this module" type="string" init-value="RandomListGenerator" is-not-null="yes"/>
-  <attribute name="reserved_cores" description="Number of CPU cores required for exclusive use by threds of this module" type="u8" init-value="0" is-not-null="yes"/>
-  <attribute name="numa_node" description="NUMA node for threads of this module" type="s16" init-value="-1" is-not-null="yes"/>
   <relationship name="inputs" description="List of connections to/from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="outputs" description="Output connections from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="used_resources" class-type="HostResource" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="yes" is-dependent="yes"/>
+  <relationship name="used_cpu" class-type="ProcessingResourceClaim" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
- <class name="Host">
-  <attribute name="storage" description="Amount of disk storage available for output data on this host in GB" type="u32" init-value="0" is-not-null="yes"/>
-  <attribute name="resources" description="Special features of this host e.g. AVX512 instructions" type="string" is-multi-value="yes"/>
-  <relationship name="network" description="Network interfaces attached to this host" class-type="NetworkInterface" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
-  <relationship name="numa_nodes" class-type="NumaNode" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ <class name="HostResource" is-abstract="yes">
+  <attribute name="physical_host_name" type="string" is-not-null="yes"/>
  </class>
 
  <class name="NetworkConnection">
@@ -120,6 +115,12 @@
   <attribute name="protocol" description="Protocol of the connection tcp or udp" type="enum" range="tcp,udp" init-value="tcp" is-not-null="yes"/>
   <attribute name="port" type="u16" is-not-null="yes"/>
   <attribute name="uri" type="string" is-not-null="yes"/>
+ </class>
+
+ <class name="NetworkDevice">
+  <superclass name="HostResource"/>
+  <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
+  <relationship name="network" description="Network interfaces attached to this host" class-type="NetworkInterface" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="NetworkInterface">
@@ -138,6 +139,17 @@
 
  <class name="Parameter" description="This abstract class is used to describe a single variable (name:value pair) or a set of variables." is-abstract="yes">
   <attribute name="Description" description="Describes the purpose of the parameter." type="string"/>
+ </class>
+
+ <class name="ProcessingResource">
+  <superclass name="HostResource"/>
+  <attribute name="cpu_cores" type="u16" is-multi-value="yes" is-not-null="yes"/>
+  <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
+ </class>
+
+ <class name="ProcessingResourceClaim">
+  <attribute name="count" description="Number of CPU cores required by this claim" type="u8" init-value="1" is-not-null="yes"/>
+  <relationship name="processor" description="ProcessingResource that this claims a part of" class-type="ProcessingResource" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
  <class name="Queue">
@@ -160,6 +172,11 @@
   <relationship name="ProcessEnvironment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
  </class>
 
+ <class name="StorageDevice">
+  <superclass name="HostResource"/>
+  <attribute name="storage" description="Amount of disk storage available for output data on this host in GB" type="u32" init-value="0" is-not-null="yes"/>
+ </class>
+
  <class name="Variable" description="A Variable associates a value with string name. It is used for process environment and database strings substitution.">
   <superclass name="Parameter"/>
   <attribute name="Name" description="Name of the variable." type="string"/>
@@ -169,6 +186,11 @@
  <class name="VariableSet" description="Set of variables or variable sets. Names and values of all nested variables are added to value of relationship using resource set.">
   <superclass name="Parameter"/>
   <relationship name="Contains" description="List of included variables or variable sets." class-type="Parameter" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+ <class name="VirtualHost">
+  <attribute name="physical_host_name" type="string" is-not-null="yes"/>
+  <relationship name="hw_resources" description="Hardware resources required by this virtual host" class-type="HostResource" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
 </oks-schema>
