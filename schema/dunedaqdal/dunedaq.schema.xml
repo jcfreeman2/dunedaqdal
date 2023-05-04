@@ -80,11 +80,24 @@
 
 <oks-schema>
 
-<info name="" type="" num-of-items="18" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230426T111053"/>
+<info name="" type="" num-of-items="24" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230504T131551"/>
 
  <class name="Application" description="A software executable" is-abstract="yes">
+  <superclass name="ResourceBase"/>
   <relationship name="ApplicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
   <relationship name="host" description="VirtualHost to run this application on" class-type="VirtualHost" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+ </class>
+
+ <class name="Component" description="Abstract base class for Segment and Resource classes. It is only used to allow objects of derived classes to be put into list of disabled items. For more information read https://twiki.cern.ch/twiki/bin/viewauth/Atlas/DaqHltDal#3_4_Resource_Classes" is-abstract="yes">
+  <method name="get_parents" description="The algorithm calculates a vector of segments which are parents of given segment.&#xA;If the segment has parents referenced by the partition object, then:&#xA;- in case of C++ it fills the parents parameter; otherwise it throws {@link NotFoundException} exception">
+   <method-implementation language="c++" prototype="void get_parents(const dunedaq::dal::Session&amp; session, std::list&lt; std::vector&lt;const dunedaq::dal::Component *&gt; &gt;&amp; parents) const" body=""/>
+  </method>
+  <method name="disabled" description="The algorithm checks if the segment / resource is disabled in the partition that uses it.&#xA;@param partition      partition object containing this resource or segment&#xA;">
+   <method-implementation language="c++" prototype="bool disabled(const dunedaq::dal::Session&amp; session, bool skip_check = false) const" body=""/>
+  </method>
+  <method name="why_disabled" description="">
+   <method-implementation language="java" prototype="String why_disabled(Partition partition, String prefix, boolean full_report) throws config.GenericException, config.SystemException, config.NotFoundException, config.NotValidException" body="return partition.resources().why_disabled(this, prefix, full_report);"/>
+  </method>
  </class>
 
  <class name="Connection" is-abstract="yes">
@@ -95,12 +108,13 @@
   <superclass name="Application"/>
   <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
   <relationship name="modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
-  <method name="get_used_resources" description="Get the set of all HostResources used by this application">
-   <method-implementation language="c++" prototype=" std::set&lt;const dunedaq::dal::HostResource*&gt; get_used_resources() const" body="std::set&lt;const dunedaq::dal::HostResource*&gt; res;&#xA;for (auto module :  get_modules()) {&#xA;  for (auto resource : module-&gt;get_used_resources()) {&#xA;    res.insert(resource);&#xA;  }&#xA;}&#xA;return res;&#xA;"/>
+  <method name="get_used_hostresources" description="Get the set of all HostResources used by this application">
+   <method-implementation language="c++" prototype=" std::set&lt;const dunedaq::dal::HostResource*&gt; get_used_hostresources() const" body="std::set&lt;const dunedaq::dal::HostResource*&gt; res;&#xA;for (auto module :  get_modules()) {&#xA;  for (auto resource : module-&gt;get_used_resources()) {&#xA;    res.insert(resource);&#xA;  }&#xA;}&#xA;return res;&#xA;"/>
   </method>
  </class>
 
  <class name="DaqModule" description="A plugin module for the app framework">
+  <superclass name="ResourceBase"/>
   <attribute name="plugin" description="Name of daq application plugin implementing this module" type="string" init-value="RandomListGenerator" is-not-null="yes"/>
   <relationship name="inputs" description="List of connections to/from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="outputs" description="Output connections from this module" class-type="Connection" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
@@ -108,7 +122,7 @@
  </class>
 
  <class name="HostResource" is-abstract="yes">
-  <attribute name="physical_host_name" type="string" is-not-null="yes"/>
+  <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
  </class>
 
  <class name="NetworkConnection">
@@ -121,7 +135,6 @@
 
  <class name="NetworkDevice">
   <superclass name="HostResource"/>
-  <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
   <relationship name="network" description="Network interfaces attached to this host" class-type="NetworkInterface" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
@@ -146,7 +159,6 @@
  <class name="ProcessingResource">
   <superclass name="HostResource"/>
   <attribute name="cpu_cores" type="u16" is-multi-value="yes" is-not-null="yes"/>
-  <attribute name="numa_id" type="u8" init-value="0" is-not-null="yes"/>
  </class>
 
  <class name="Queue">
@@ -161,12 +173,43 @@
   <relationship name="ApplicationsControlled" description="Applications RC is in charge of" class-type="Application" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
  </class>
 
+ <class name="Resource">
+  <superclass name="ResourceBase"/>
+ </class>
+
+ <class name="ResourceBase">
+  <superclass name="Component"/>
+  <method name="get_resources" description="Returns list of resources including defined by the nested sets. If partition parameter is provided (i.e. it is not &lt;b&gt;null&lt;/b&gt;), only enabled resources are added.">
+   <method-implementation language="c++" prototype="void get_resources(oksdbinterfaces::Configuration&amp; db, std::list&lt;const Resource *&gt;&amp; out, const Session * p = 0) const" body=""/>
+  </method>
+ </class>
+
+ <class name="ResourceSet">
+  <superclass name="ResourceBase"/>
+  <relationship name="Contains" description="A resource set is a container of resources to easily implement group operations (add/remove, enable/disable)." class-type="ResourceBase" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="no"/>
+ </class>
+
+ <class name="ResourceSetAND" description="This resource set is considered disabled when ALL nested resources are disabled.">
+  <superclass name="ResourceSet"/>
+ </class>
+
+ <class name="ResourceSetOR" description="This resource set is considered disabled when ANY nested resource is disabled.">
+  <superclass name="ResourceSet"/>
+ </class>
+
  <class name="Session">
-  <attribute name="Description" description="A description of the session." type="string"/>
+  <attribute name="description" description="A description of the session." type="string"/>
   <attribute name="use_connectivity_server" description="If set publish and lookup connection information in the connectivity server. If not all information will be provided by the configuration database." type="bool" init-value="true" is-not-null="yes"/>
   <attribute name="connectivity_service_interval_ms" description="Interval between publishes and polls of connectivity service information" type="u32" init-value="2000" is-not-null="yes"/>
   <relationship name="applications" description="The list of applications to be started in this Session" class-type="Application" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
-  <relationship name="ProcessEnvironment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <relationship name="environment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <relationship name="disabled" description="Resources that should not participate in the current run" class-type="ResourceBase" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <method name="set_disabled" description="In addition to persistently disabled components, dynamically disable these components. It will be taken into account by disabled() algorithm of Component class. This information is not committed to the database and will be overwritten by next set_disabled() call or erased by any config action (DB load, unload, reload).">
+   <method-implementation language="c++" prototype="void set_disabled(const std::set&lt;const dunedaq::dal::Component *&gt;&amp; objs) const" body="BEGIN_PRIVATE_SECTION&#xA;friend class DisabledComponents;&#xA;friend class Component;&#xA;mutable dunedaq::dal::DisabledComponents m_disabled_components; &#xA;END_PRIVATE_SECTION&#xA;BEGIN_MEMBER_INITIALIZER_LIST&#xA;m_disabled_components(p_db)&#xA;END_MEMBER_INITIALIZER_LIST&#xA;BEGIN_HEADER_PROLOGUE&#xA;#include &quot;dunedaqdal/disabled-components.hpp&quot;&#xA;END_HEADER_PROLOGUE"/>
+  </method>
+  <method name="set_enabled" description="Dynamically enable these persistently disabled components. It will be taken into account by disabled() algorithm of the Component class. This information is not committed to the database and will be overwritten by next set_enabled() call or erased by any config action (DB load, unload, reload).">
+   <method-implementation language="c++" prototype="void set_enabled(const std::set&lt;const dunedaq::dal::Component *&gt;&amp; objs) const" body=""/>
+  </method>
  </class>
 
  <class name="StorageDevice">

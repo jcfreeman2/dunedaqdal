@@ -3,6 +3,17 @@ This package contains a putative 'core' schema for dunedaq OKS configuartion.
 
   ![schema](schema.png)
 
+This version now has the Resource suite of classes borrowed from the
+ATLAS core schema. As a first example of using these, the Application
+and DaqModule classes now inherit from ResourceBase so all
+applications and individual DAQModules can be disabled by adding them
+to the `disabled` relationship of the Session.
+
+  ![resources](resources.png)
+
+There is a new simple application `list_apps` to list the applications
+and their modules, indicating their disabled state where set.
+
 ## Notes
 
 ### VirtualHost
@@ -16,7 +27,7 @@ allocated resources of a different NUMA node.
 
  The DaqApplication contains a list of DaqModules each of which has a
 list of used resources. The DaqApplication provides a method
-`get_used_resources` which can be called by `appfwk` in order to check
+`get_used_hostresources` which can be called by `appfwk` in order to check
 that these resources are indeed associated with the VirtualHost by
 comparing with those listed in its `hw_resources` relationship.
 

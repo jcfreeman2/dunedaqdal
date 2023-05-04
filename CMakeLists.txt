@@ -32,8 +32,12 @@ daq_generate_dal(dunedaq.schema.xml
   CPP_OUTPUT  dal_cpp_srcs
   DUMP_OUTPUT cpp_dump_src)
 
-daq_add_library(${dal_cpp_srcs} DAL LINK_LIBRARIES oksdbinterfaces::oksdbinterfaces okssystem::okssystem logging::logging) # Any source files and/or dependent libraries to link in not yet determined
+daq_add_library(${dal_cpp_srcs} dalMethods.cxx test_circular_dependency.cpp disabled-components.cpp
+ DAL LINK_LIBRARIES oksdbinterfaces::oksdbinterfaces okssystem::okssystem logging::logging) # Any source files and/or dependent libraries to link in not yet determined
 
+
+daq_add_application(listApps list_apps.cxx
+  LINK_LIBRARIES dunedaqdal oksdbinterfaces::oksdbinterfaces)
 ##############################################################################
 
 

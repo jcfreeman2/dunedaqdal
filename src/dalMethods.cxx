@@ -1,0 +1,156 @@
+/**
+ * @file dalMethods.cxx
+ *
+ * Implementations of Methods defined in dunedaqdal schema classes
+ *
+ * This is part of the DUNE DAQ Software Suite, copyright 2020.
+ * Licensing/copyright details are in the COPYING file that you should have
+ * received with this code.
+ */
+
+#include "dunedaqdal/Application.hpp"
+#include "dunedaqdal/Component.hpp"
+#include "dunedaqdal/Resource.hpp"
+#include "dunedaqdal/ResourceSetAND.hpp"
+#include "dunedaqdal/ResourceSetOR.hpp"
+#include "dunedaqdal/Session.hpp"
+
+#include "test_circular_dependency.hpp"
+
+#include "oksdbinterfaces/ConfigObject.hpp"
+
+#include <list>
+#include <set>
+#include <iostream>
+
+// Stolen from ATLAS dal package
+using namespace dunedaq::oksdbinterfaces;
+
+  /**
+   *  Static function to calculate list of components
+   *  from the root segment to the lowest component which
+   *  the child object (a segment or a resource) belongs.
+   */
+
+static void
+make_parents_list(
+    const ConfigObjectImpl * child,
+    const dunedaq::dal::ResourceSet * resource_set,
+    std::vector<const dunedaq::dal::Component *> & p_list,
+    std::list< std::vector<const dunedaq::dal::Component *> >& out,
+    dunedaq::dal::TestCircularDependency& cd_fuse)
+{
+  dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, resource_set);
+
+  // add the resource set to the path
+  p_list.push_back(resource_set);
+
+  // check if the application is in the resource relationship, i.e. is a resource or belongs to resource set(s)
+  for (const auto& i : resource_set->get_Contains()) {
+    if (i->config_object().implementation() == child) {
+      out.push_back(p_list);
+    }
+    else if (const dunedaq::dal::ResourceSet * rs = i->cast<dunedaq::dal::ResourceSet>()) {
+      make_parents_list(child, rs, p_list, out, cd_fuse);
+    }
+  }
+
+  // remove the resource set from the path
+  p_list.pop_back();
+}
+
+#if 0
+static void
+make_parents_list(
+    const ConfigObjectImpl * child,
+    //const dunedaq::dal::Segment * segment,
+    const dunedaq::dal::Application * app,
+    std::vector<const dunedaq::dal::Component *> & p_list,
+    std::list<std::vector<const dunedaq::dal::Component *> >& out,
+    bool is_segment,
+    dunedaq::dal::TestCircularDependency& cd_fuse)
+{
+  dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, segment);
+
+  // add the segment to the path
+  p_list.push_back(segment);
+
+  // check if the application is in the nested segment
+  for (const auto& i : segment->get_Segments()) {
+    if (i->config_object().implementation() == child)
+      add_path(p_list, out);
+    else
+      make_parents_list(child, i, p_list, out, is_segment, cd_fuse);
+  }
+  // check if the application is in the resource relationship, i.e. is a resource or belongs to resource set(s)
+  if (!is_segment) {
+    for (const auto& i : segment->get_Resources())
+      if (i->config_object().implementation() == child)
+        add_path(p_list, out);
+      else if (const dunedaq::dal::ResourceSet * resource_set = i->cast<dunedaq::dal::ResourceSet>())
+        make_parents_list(child, resource_set, p_list, out, cd_fuse);
+  }
+
+  // remove the segment from the path
+
+  p_list.pop_back();
+}
+
+
+static void
+check_segment(
+    std::list< std::vector<const dunedaq::dal::Component *> >& out,
+    const dunedaq::dal::Segment * segment,
+    const ConfigObjectImpl * child,
+    bool is_segment,
+    dunedaq::dal::TestCircularDependency& cd_fuse)
+{
+  dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, segment);
+
+  std::vector<const dunedaq::dal::Component *> s_list;
+
+  if (segment->config_object().implementation() == child) {
+    out.push_back(s_list);
+  }
+  make_parents_list(child, segment, s_list, out, is_segment, cd_fuse);
+}
+#endif
+void
+dunedaq::dal::Component::get_parents(
+  const dunedaq::dal::Session& session,
+  std::list<std::vector<const dunedaq::dal::Component *>>& parents) const
+{
+  const ConfigObjectImpl * obj_impl = config_object().implementation();
+
+  //const bool is_segment = castable(dunedaq::dal::Segment::s_class_name);
+
+  try {
+    dunedaq::dal::TestCircularDependency cd_fuse("component parents", &session);
+
+#if 0
+    // check session's segments
+    for (const auto& i : session.get_Segments()) {
+      check_segment(parents, i, obj_impl, is_segment, cd_fuse);
+    }
+#else
+    for (const auto& app : session.get_applications()) {
+      auto res = app->cast<dunedaq::dal::ResourceSet>();
+      if (res) {
+        AddTestOnCircularDependency add_fuse_test(cd_fuse, res);
+        std::vector<const Component *> s_list;
+        if (res->config_object().implementation() == obj_impl) {
+          parents.push_back(s_list);
+        }
+        make_parents_list(obj_impl, res, s_list, parents, cd_fuse);
+      }
+    }
+#endif
+
+    if (parents.empty()) {
+      TLOG_DEBUG(1) <<  "cannot find segment/resource path(s) between Component " << this << " and session " << &session << " objects (check this object is linked with the session as a segment or a resource)" ;
+    }
+  }
+  catch (ers::Issue & ex) {
+    ers::error(dunedaq::dal::CannotGetParents(ERS_HERE, full_name(), ex));
+  }
+}
