@@ -10,9 +10,12 @@
 
 #include "dunedaqdal/Application.hpp"
 #include "dunedaqdal/Component.hpp"
+#include "dunedaqdal/DaqApplication.hpp"
+#include "dunedaqdal/DaqModule.hpp"
 #include "dunedaqdal/Resource.hpp"
 #include "dunedaqdal/ResourceSetAND.hpp"
 #include "dunedaqdal/ResourceSetOR.hpp"
+#include "dunedaqdal/Segment.hpp"
 #include "dunedaqdal/Session.hpp"
 
 #include "test_circular_dependency.hpp"
@@ -26,6 +29,7 @@
 // Stolen from ATLAS dal package
 using namespace dunedaq::oksdbinterfaces;
 
+namespace dunedaq::dal {
   /**
    *  Static function to calculate list of components
    *  from the root segment to the lowest component which
@@ -46,7 +50,7 @@ make_parents_list(
   p_list.push_back(resource_set);
 
   // check if the application is in the resource relationship, i.e. is a resource or belongs to resource set(s)
-  for (const auto& i : resource_set->get_Contains()) {
+  for (const auto& i : resource_set->get_contains()) {
     if (i->config_object().implementation() == child) {
       out.push_back(p_list);
     }
@@ -151,6 +155,40 @@ dunedaq::dal::Component::get_parents(
     }
   }
   catch (ers::Issue & ex) {
-    ers::error(dunedaq::dal::CannotGetParents(ERS_HERE, full_name(), ex));
+    ers::error(CannotGetParents(ERS_HERE, full_name(), ex));
   }
+}
+
+std::vector<const Application*> getSegmentApps(const Segment* segment) {
+  auto apps = segment->get_applications();
+  for (auto seg : segment->get_segments()) {
+    auto segapps = getSegmentApps(seg);
+    apps.insert(apps.end(), segapps.begin(),segapps.end());
+  }
+  return apps;
+}
+
+std::vector<const Application*> Session::get_all_applications() const {
+  auto apps = m_applications;
+  for (auto seg : m_segments) {
+    auto segapps = getSegmentApps(seg);
+    apps.insert(apps.end(), segapps.begin(),segapps.end());
+  }
+  return apps;
+}
+
+std::set<const HostResource*>
+DaqApplication::get_used_hostresources() const {
+  std::set<const HostResource*> res;
+  for (auto resource :  get_contains()) {
+    auto module=resource->cast<DaqModule>();
+    if (module) {
+      for (auto hostresource : module->get_used_resources()) {
+        res.insert(hostresource);
+      }
+    }
+  }
+  return res;
+}
+
 }

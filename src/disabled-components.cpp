@@ -2,6 +2,7 @@
 #include "dunedaqdal/ResourceSet.hpp"
 #include "dunedaqdal/ResourceSetAND.hpp"
 #include "dunedaqdal/ResourceSetOR.hpp"
+#include "dunedaqdal/Segment.hpp"
 #include "dunedaqdal/Session.hpp"
 #include "dunedaqdal/util.hpp"
 #include "dunedaqdal/disabled-components.hpp"
@@ -68,10 +69,7 @@ dunedaq::dal::DisabledComponents::is_enabled(const dunedaq::dal::Component * c)
 #if 0
   if (const dunedaq::dal::Segment * seg = c->cast<dunedaq::dal::Segment>())
     {
-      if (dunedaq::dal::SegConfig * conf = seg->get_seg_config(false, true))
-        {
-          return !conf->is_disabled();
-        }
+      return !seg->disabled();
     }
   else if (const dunedaq::dal::BaseApplication * app = c->cast<dunedaq::dal::BaseApplication>())
     {
@@ -120,7 +118,7 @@ dunedaq::dal::Session::set_enabled(const std::set<const dunedaq::dal::Component 
 void
 dunedaq::dal::DisabledComponents::disable_children(const dunedaq::dal::ResourceSet& rs)
 {
-  for (auto & i : rs.get_Contains())
+  for (auto & i : rs.get_contains())
     {
       if (const dunedaq::dal::ResourceSet * rs2 = i->cast<dunedaq::dal::ResourceSet>())
         {
@@ -129,10 +127,10 @@ dunedaq::dal::DisabledComponents::disable_children(const dunedaq::dal::ResourceS
     }
 }
 
-#if 0
 void
 dunedaq::dal::DisabledComponents::disable_children(const dunedaq::dal::Segment& s)
 {
+#if 0
   for (auto & i : s.get_Resources())
     {
       if (const dunedaq::dal::ResourceSet * rs = i->cast<dunedaq::dal::ResourceSet>())
@@ -140,15 +138,14 @@ dunedaq::dal::DisabledComponents::disable_children(const dunedaq::dal::Segment& 
           disable_children(*rs);
         }
     }
-
-  for (auto & j : s.get_Segments())
+#endif
+  for (auto & j : s.get_segments())
     {
       TLOG_DEBUG(6) <<  "disable segment " << j << " because it's parent segment " << &s << " is disabled" ;
       disable(*j);
       disable_children(*j);
     }
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -183,7 +180,7 @@ static void fill(
       rs_or.push_back(r2);
     }
 
-  for (auto & i : rs.get_Contains())
+  for (auto & i : rs.get_contains())
     {
       dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, i);
       if (const dunedaq::dal::ResourceSet * rs2 = i->cast<dunedaq::dal::ResourceSet>())
@@ -193,7 +190,7 @@ static void fill(
     }
 }
 
-#if 0
+
   // fill data from segments
 
 static void fill(
@@ -203,7 +200,7 @@ static void fill(
   dunedaq::dal::TestCircularDependency& cd_fuse
 )
 {
-  for (auto & i : s.get_Resources())
+  for (auto & i : s.get_applications())
     {
       dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, i);
       if (const dunedaq::dal::ResourceSet * rs = i->cast<dunedaq::dal::ResourceSet>())
@@ -212,18 +209,18 @@ static void fill(
         }
     }
 
-  for (auto & j : s.get_Segments())
+  for (auto & j : s.get_segments())
     {
       dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, j);
       fill(*j, rs_or, rs_and, cd_fuse);
     }
 }
-#endif
+
 
   // fill data from session
 
 static void fill(
-  const dunedaq::dal::Session& p,
+  const dunedaq::dal::Session& session,
   std::vector<const dunedaq::dal::ResourceSetOR *>& rs_or,
   std::vector<const dunedaq::dal::ResourceSetAND *>& rs_and,
   dunedaq::dal::TestCircularDependency& cd_fuse
@@ -244,13 +241,13 @@ static void fill(
             }
         }
     }
+#endif
 
-  for (auto & i : p.get_Segments())
+  for (auto & i : session.get_segments())
     {
       dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, i);
       fill(*i, rs_or, rs_and, cd_fuse);
     }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -258,6 +255,7 @@ static void fill(
 bool
 dunedaq::dal::Component::disabled(const dunedaq::dal::Session& session, bool skip_check) const
 {
+  TLOG_DEBUG( 6) << "Session UID: " << session.UID();
   // fill disabled (e.g. after session changes)
 
   if (session.m_disabled_components.size() == 0) {
@@ -290,7 +288,7 @@ dunedaq::dal::Component::disabled(const dunedaq::dal::Session& session, bool ski
 
           if (session.m_disabled_components.m_user_enabled.find(i) == session.m_disabled_components.m_user_enabled.end()) {
             vector_of_disabled.push_back(i);
-            TLOG_DEBUG(6) <<  "disable component " << i << " because it is explicitly disabled in session" ;
+            TLOG_DEBUG(6) <<  "disable component " << i << " because it is not explicitly enabled in session" ;
           }
           else {
             TLOG_DEBUG(6) <<  "skip component " << i << " because it is enabled by user" ;
@@ -304,11 +302,9 @@ dunedaq::dal::Component::disabled(const dunedaq::dal::Session& session, bool ski
           if (const dunedaq::dal::ResourceSet * rs = i->cast<dunedaq::dal::ResourceSet>()) {
             session.m_disabled_components.disable_children(*rs);
           }
-#if 0
           else if (const dunedaq::dal::Segment * seg = i->cast<dunedaq::dal::Segment>()) {
             session.m_disabled_components.disable_children(*seg);
           }
-#endif
         }
       }
 
@@ -320,7 +316,7 @@ dunedaq::dal::Component::disabled(const dunedaq::dal::Session& session, bool ski
         for (const auto& i : rs_or) {
           if (session.m_disabled_components.is_enabled_short(i)) {
             // check ANY child is disabled
-            for (auto & i2 : i->get_Contains()) {
+            for (auto & i2 : i->get_contains()) {
               if (!session.m_disabled_components.is_enabled_short(i2)) {
                 TLOG_DEBUG(6) <<  "disable resource-set-OR " << i << " because it's child " << i2 << " is disabled" ;
                 session.m_disabled_components.disable(*i);
@@ -333,7 +329,7 @@ dunedaq::dal::Component::disabled(const dunedaq::dal::Session& session, bool ski
 
         for (const auto& j : rs_and) {
           if (session.m_disabled_components.is_enabled_short(j)) {
-            const std::vector<const dunedaq::dal::ResourceBase*> &resources = j->get_Contains();
+            const std::vector<const dunedaq::dal::ResourceBase*> &resources = j->get_contains();
 
             if (!resources.empty()) {
               // check ANY child is enabled

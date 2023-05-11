@@ -4,6 +4,7 @@
 #include "dunedaqdal/Component.hpp"
 #include "dunedaqdal/DaqApplication.hpp"
 #include "dunedaqdal/DaqModule.hpp"
+#include "dunedaqdal/Segment.hpp"
 #include "dunedaqdal/Session.hpp"
 
 #include <iostream>
@@ -21,9 +22,7 @@ int main(int argc, char* argv[]) {
 
   std::string sessionName(argv[1]);
   auto session = confdb->get<dal::Session>(sessionName);
-
-  //auto disabled = session->get_disabled();
-  for (auto app : session->get_applications()) {
+  for (auto app : session->get_all_applications()) {
     std::cout << "Application: " << app->UID();
     if (app->disabled(*session)) {
       std::cout << "<disabled>";
@@ -32,7 +31,7 @@ int main(int argc, char* argv[]) {
       auto daqApp = app->cast<dal::DaqApplication>();
       if (daqApp) {
         std::cout << " Modules:";
-        for (auto mod : daqApp->get_modules()) {
+        for (auto mod : daqApp->get_contains()) {
           std::cout << " " << mod->UID();
           if (mod->disabled(*session)) {
             std::cout << "<disabled>";

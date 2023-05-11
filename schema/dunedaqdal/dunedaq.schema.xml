@@ -80,7 +80,7 @@
 
 <oks-schema>
 
-<info name="" type="" num-of-items="24" oks-format="schema" oks-version="862f2957270" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230504T131551"/>
+<info name="" type="" num-of-items="25" oks-format="schema" oks-version="oks-08-03-04-1-gf920aa4 built &quot;May 12 2022&quot;" created-by="jcfree" created-on="mu2edaq13.fnal.gov" creation-time="20230123T223700" last-modified-by="gjc" last-modified-on="thinkpad" last-modification-time="20230510T100730"/>
 
  <class name="Application" description="A software executable" is-abstract="yes">
   <superclass name="ResourceBase"/>
@@ -106,10 +106,10 @@
 
  <class name="DaqApplication">
   <superclass name="Application"/>
+  <superclass name="ResourceSetAND"/>
   <attribute name="port" description="Port for REST configuration interface" type="u16" is-not-null="yes"/>
-  <relationship name="modules" description="List of DAQ plugin modules" class-type="DaqModule" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <method name="get_used_hostresources" description="Get the set of all HostResources used by this application">
-   <method-implementation language="c++" prototype=" std::set&lt;const dunedaq::dal::HostResource*&gt; get_used_hostresources() const" body="std::set&lt;const dunedaq::dal::HostResource*&gt; res;&#xA;for (auto module :  get_modules()) {&#xA;  for (auto resource : module-&gt;get_used_resources()) {&#xA;    res.insert(resource);&#xA;  }&#xA;}&#xA;return res;&#xA;"/>
+   <method-implementation language="c++" prototype=" std::set&lt;const dunedaq::dal::HostResource*&gt; get_used_hostresources() const" body=""/>
   </method>
  </class>
 
@@ -179,14 +179,14 @@
 
  <class name="ResourceBase">
   <superclass name="Component"/>
-  <method name="get_resources" description="Returns list of resources including defined by the nested sets. If partition parameter is provided (i.e. it is not &lt;b&gt;null&lt;/b&gt;), only enabled resources are added.">
-   <method-implementation language="c++" prototype="void get_resources(oksdbinterfaces::Configuration&amp; db, std::list&lt;const Resource *&gt;&amp; out, const Session * p = 0) const" body=""/>
+  <method name="get_resources" description="Returns list of resources including those defined by the nested sets. If the session parameter is provided (i.e. it is not &lt;b&gt;null&lt;/b&gt;), only enabled resources are added.">
+   <method-implementation language="c++" prototype="void get_resources(oksdbinterfaces::Configuration&amp; db, std::list&lt;const Resource *&gt;&amp; out, const Session * session = 0) const" body=""/>
   </method>
  </class>
 
  <class name="ResourceSet">
   <superclass name="ResourceBase"/>
-  <relationship name="Contains" description="A resource set is a container of resources to easily implement group operations (add/remove, enable/disable)." class-type="ResourceBase" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="no"/>
+  <relationship name="contains" description="A resource set is a container of resources to easily implement group operations (add/remove, enable/disable)." class-type="ResourceBase" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="no"/>
  </class>
 
  <class name="ResourceSetAND" description="This resource set is considered disabled when ALL nested resources are disabled.">
@@ -197,13 +197,23 @@
   <superclass name="ResourceSet"/>
  </class>
 
+ <class name="Segment" description="Logical sub division of the configuration that can be enabled/disabled as a group">
+  <superclass name="ResourceBase"/>
+  <relationship name="segments" description="Nested list of Segments that form part of this Segment" class-type="Segment" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="applications" description="List of Applications that run in this Segment" class-type="Application" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+ </class>
+
  <class name="Session">
   <attribute name="description" description="A description of the session." type="string"/>
   <attribute name="use_connectivity_server" description="If set publish and lookup connection information in the connectivity server. If not all information will be provided by the configuration database." type="bool" init-value="true" is-not-null="yes"/>
   <attribute name="connectivity_service_interval_ms" description="Interval between publishes and polls of connectivity service information" type="u32" init-value="2000" is-not-null="yes"/>
-  <relationship name="applications" description="The list of applications to be started in this Session" class-type="Application" low-cc="one" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="applications" description="The list of applications to be started in this Session" class-type="Application" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="environment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
   <relationship name="disabled" description="Resources that should not participate in the current run" class-type="Component" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <relationship name="segments" description="List of configuration Segments that form this Session" class-type="Segment" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
+  <method name="get_all_applications" description="Returns applications defined in the Session and all of its Segments.">
+   <method-implementation language="c++" prototype="std::vector&lt;const dunedaq::dal::Application *&gt; get_all_applications() const" body=""/>
+  </method>
   <method name="set_disabled" description="In addition to persistently disabled components, dynamically disable these components. It will be taken into account by disabled() algorithm of Component class. This information is not committed to the database and will be overwritten by next set_disabled() call or erased by any config action (DB load, unload, reload).">
    <method-implementation language="c++" prototype="void set_disabled(const std::set&lt;const dunedaq::dal::Component *&gt;&amp; objs) const" body="BEGIN_PRIVATE_SECTION&#xA;friend class DisabledComponents;&#xA;friend class Component;&#xA;mutable dunedaq::dal::DisabledComponents m_disabled_components; &#xA;END_PRIVATE_SECTION&#xA;BEGIN_MEMBER_INITIALIZER_LIST&#xA;m_disabled_components(p_db)&#xA;END_MEMBER_INITIALIZER_LIST&#xA;BEGIN_HEADER_PROLOGUE&#xA;#include &quot;dunedaqdal/disabled-components.hpp&quot;&#xA;END_HEADER_PROLOGUE"/>
   </method>

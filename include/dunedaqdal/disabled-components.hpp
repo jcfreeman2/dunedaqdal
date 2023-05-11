@@ -97,8 +97,8 @@ namespace dunedaq::dal {
       void
       disable_children(const dunedaq::dal::ResourceSet&);
 
-      // void
-      // disable_children(const dunedaq::dal::Segment&);
+      void
+      disable_children(const dunedaq::dal::Segment&);
 
       static unsigned long
       get_num_of_slr_resources(const dunedaq::dal::Session& p);

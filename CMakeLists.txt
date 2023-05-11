@@ -38,6 +38,9 @@ daq_add_library(${dal_cpp_srcs} dalMethods.cxx test_circular_dependency.cpp disa
 
 daq_add_application(listApps list_apps.cxx
   LINK_LIBRARIES dunedaqdal oksdbinterfaces::oksdbinterfaces)
+
+daq_add_application(disable_test disable_test.cxx TEST
+  LINK_LIBRARIES dunedaqdal oksdbinterfaces::oksdbinterfaces logging::logging)
 ##############################################################################
 
 
@@ -45,7 +48,7 @@ daq_add_application(listApps list_apps.cxx
 
 
 #daq_add_python_bindings(*.cpp LINK_LIBRARIES ${PROJECT_NAME} ) # Any additional libraries to link in beyond the main library not yet determined
-#daq_add_python_bindings(*.cpp LINK_LIBRARIES dal)
+daq_add_python_bindings(*.cpp LINK_LIBRARIES dunedaqdal)
 
 
 ##############################################################################
