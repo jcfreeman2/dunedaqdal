@@ -33,6 +33,7 @@ namespace dunedaq::dal {
       };
 
       dunedaq::oksdbinterfaces::Configuration& m_db;
+      Session* m_session;
 
       unsigned long m_num_of_slr_enabled_resources;
       unsigned long m_num_of_slr_disabled_resources;
@@ -53,7 +54,7 @@ namespace dunedaq::dal {
 
     public:
 
-      DisabledComponents(dunedaq::oksdbinterfaces::Configuration& db);
+      DisabledComponents(dunedaq::oksdbinterfaces::Configuration& db, Session* session);
 
       virtual
       ~DisabledComponents();

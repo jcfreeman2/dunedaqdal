@@ -1,3 +1,4 @@
+#include "logging/Logging.hpp"
 
 #include "oksdbinterfaces/Configuration.hpp"
 
@@ -13,6 +14,8 @@
 using namespace dunedaq;
 
 int main(int argc, char* argv[]) {
+  dunedaq::logging::Logging::setup();
+
   if (argc < 3) {
     std::cout << "Usage: " << argv[0] << " session database-file\n";
     return 0;

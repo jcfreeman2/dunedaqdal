@@ -63,12 +63,10 @@ make_parents_list(
   p_list.pop_back();
 }
 
-#if 0
 static void
 make_parents_list(
     const ConfigObjectImpl * child,
-    //const dunedaq::dal::Segment * segment,
-    const dunedaq::dal::Application * app,
+    const dunedaq::dal::Segment * segment,
     std::vector<const dunedaq::dal::Component *> & p_list,
     std::list<std::vector<const dunedaq::dal::Component *> >& out,
     bool is_segment,
@@ -80,19 +78,25 @@ make_parents_list(
   p_list.push_back(segment);
 
   // check if the application is in the nested segment
-  for (const auto& i : segment->get_Segments()) {
-    if (i->config_object().implementation() == child)
-      add_path(p_list, out);
+  for (const auto& seg : segment->get_segments()) {
+    if (seg->config_object().implementation() == child)
+      out.push_back(p_list);
     else
-      make_parents_list(child, i, p_list, out, is_segment, cd_fuse);
+      make_parents_list(child, seg, p_list, out, is_segment, cd_fuse);
   }
-  // check if the application is in the resource relationship, i.e. is a resource or belongs to resource set(s)
   if (!is_segment) {
-    for (const auto& i : segment->get_Resources())
-      if (i->config_object().implementation() == child)
-        add_path(p_list, out);
-      else if (const dunedaq::dal::ResourceSet * resource_set = i->cast<dunedaq::dal::ResourceSet>())
+    for (const auto& app : segment->get_applications()) {
+      if (app->config_object().implementation() == child)
+        out.push_back(p_list);
+      else if (const auto resource_set = app->cast<dunedaq::dal::ResourceSet>())
         make_parents_list(child, resource_set, p_list, out, cd_fuse);
+    }
+    for (const auto& res : segment->get_resources()) {
+      if (res->config_object().implementation() == child)
+        out.push_back(p_list);
+      else if (const auto resource_set = res->cast<dunedaq::dal::ResourceSet>())
+        make_parents_list(child, resource_set, p_list, out, cd_fuse);
+    }
   }
 
   // remove the segment from the path
@@ -111,14 +115,14 @@ check_segment(
 {
   dunedaq::dal::AddTestOnCircularDependency add_fuse_test(cd_fuse, segment);
 
-  std::vector<const dunedaq::dal::Component *> s_list;
+  std::vector<const dunedaq::dal::Component *> compList;
 
   if (segment->config_object().implementation() == child) {
-    out.push_back(s_list);
+    out.push_back(compList);
   }
-  make_parents_list(child, segment, s_list, out, is_segment, cd_fuse);
+  make_parents_list(child, segment, compList, out, is_segment, cd_fuse);
 }
-#endif
+
 void
 dunedaq::dal::Component::get_parents(
   const dunedaq::dal::Session& session,
@@ -126,17 +130,15 @@ dunedaq::dal::Component::get_parents(
 {
   const ConfigObjectImpl * obj_impl = config_object().implementation();
 
-  //const bool is_segment = castable(dunedaq::dal::Segment::s_class_name);
+  const bool is_segment = castable(dunedaq::dal::Segment::s_class_name);
 
   try {
     dunedaq::dal::TestCircularDependency cd_fuse("component parents", &session);
 
-#if 0
     // check session's segments
-    for (const auto& i : session.get_Segments()) {
+    for (const auto& i : session.get_segments()) {
       check_segment(parents, i, obj_impl, is_segment, cd_fuse);
     }
-#else
     for (const auto& app : session.get_applications()) {
       auto res = app->cast<dunedaq::dal::ResourceSet>();
       if (res) {
@@ -148,7 +150,6 @@ dunedaq::dal::Component::get_parents(
         make_parents_list(obj_impl, res, s_list, parents, cd_fuse);
       }
     }
-#endif
 
     if (parents.empty()) {
       TLOG_DEBUG(1) <<  "cannot find segment/resource path(s) between Component " << this << " and session " << &session << " objects (check this object is linked with the session as a segment or a resource)" ;
@@ -159,7 +160,9 @@ dunedaq::dal::Component::get_parents(
   }
 }
 
-std::vector<const Application*> getSegmentApps(const Segment* segment) {
+// ========================================================================
+
+static std::vector<const Application*> getSegmentApps(const Segment* segment) {
   auto apps = segment->get_applications();
   for (auto seg : segment->get_segments()) {
     auto segapps = getSegmentApps(seg);
@@ -168,7 +171,8 @@ std::vector<const Application*> getSegmentApps(const Segment* segment) {
   return apps;
 }
 
-std::vector<const Application*> Session::get_all_applications() const {
+std::vector<const Application*>
+Session::get_all_applications() const {
   auto apps = m_applications;
   for (auto seg : m_segments) {
     auto segapps = getSegmentApps(seg);
@@ -176,6 +180,8 @@ std::vector<const Application*> Session::get_all_applications() const {
   }
   return apps;
 }
+
+// ========================================================================
 
 std::set<const HostResource*>
 DaqApplication::get_used_hostresources() const {
