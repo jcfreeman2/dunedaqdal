@@ -14,6 +14,17 @@ to the `disabled` relationship of the Session.
 There is a new simple application `list_apps` to list the applications
 and their modules, indicating their disabled state where set.
 
+  ![environment](environment.png)
+
+The Application class has attibutes defining the application's
+ `application_name (executable name) and commandline parameters. It's
+ `applicationEnvironment` relationship lists variables needed by the
+ application in addition to those defined by the Session. An
+ [example Python script](https://github.com/gcrone/dunedaqdal/blob/gcrone/Resource/scripts/app_ennvironment.py)
+ that prints out the environmanet for enabled applications in the
+ Session is provided in the `scripts` directory.
+
+
 ## Notes
 
 ### VirtualHost
