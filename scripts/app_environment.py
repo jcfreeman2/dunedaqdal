@@ -43,6 +43,9 @@ def process_segment(db, session, segment, controller=None):
       print(f"Ignoring disabled app {app.id}")
 
 def main():
+  if len(sys.argv) != 3:
+    print(f"Usage: {sys.argv[0]} <path-to-oks-data-file> <session-name>")
+    return
   db = oksdbinterfaces.Configuration("oksconfig:" + sys.argv[1])
   session_name = sys.argv[2]
   session = db.get_dal(class_name="Session", uid=session_name)
