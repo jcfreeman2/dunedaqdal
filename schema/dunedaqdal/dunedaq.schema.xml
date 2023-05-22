@@ -86,7 +86,7 @@
   <superclass name="ResourceBase"/>
   <attribute name="application_name" description="Name of the application binary to run." type="string" is-not-null="yes"/>
   <attribute name="commandline_parameters" description="command line parameters to add when starting the application" type="string"/>
-  <relationship name="applicationEnvironment" description="Define process environment for this application." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <relationship name="applicationEnvironment" description="Define process environment for this application." class-type="VariableBase" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
   <relationship name="host" description="VirtualHost to run this application on" class-type="VirtualHost" low-cc="one" high-cc="one" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
  </class>
 
@@ -155,7 +155,7 @@
   <attribute name="description" description="Description of this NUMA node" type="string"/>
  </class>
 
- <class name="Parameter" description="This abstract class is used to describe a single variable (name:value pair) or a set of variables." is-abstract="yes">
+ <class name="VariableBase" description="This abstract class is used to describe a single variable (name:value pair) or a set of variables." is-abstract="yes">
   <attribute name="description" description="Describes the purpose of the parameter." type="string"/>
  </class>
 
@@ -215,7 +215,7 @@
   <attribute name="use_connectivity_server" description="If set publish and lookup connection information in the connectivity server. If not all information will be provided by the configuration database." type="bool" init-value="true" is-not-null="yes"/>
   <attribute name="connectivity_service_interval_ms" description="Interval between publishes and polls of connectivity service information" type="u32" init-value="2000" is-not-null="yes"/>
   <relationship name="applications" description="The list of applications to be started in this Session" class-type="Application" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
-  <relationship name="environment" description="Define process environment for any application run in given session." class-type="Parameter" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <relationship name="environment" description="Define process environment for any application run in given session." class-type="VariableBase" low-cc="zero" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
   <relationship name="disabled" description="Resources that should not participate in the current run" class-type="Component" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <relationship name="segments" description="List of configuration Segments that form this Session" class-type="Segment" low-cc="zero" high-cc="many" is-composite="yes" is-exclusive="no" is-dependent="yes"/>
   <method name="get_all_applications" description="Returns applications defined in the Session and all of its Segments.">
@@ -235,14 +235,14 @@
  </class>
 
  <class name="Variable" description="A Variable associates a value with string name. It is used for process environment and database strings substitution.">
-  <superclass name="Parameter"/>
+  <superclass name="VariableBase"/>
   <attribute name="name" description="Name of the variable." type="string"/>
   <attribute name="value" description="Value of the variable." type="string"/>
  </class>
 
  <class name="VariableSet" description="Set of variables or variable sets. Names and values of all nested variables are added to value of relationship using resource set.">
-  <superclass name="Parameter"/>
-  <relationship name="contains" description="List of included variables or variable sets." class-type="Parameter" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
+  <superclass name="VariableBase"/>
+  <relationship name="contains" description="List of included variables or variable sets." class-type="VariableBase" low-cc="one" high-cc="many" is-composite="no" is-exclusive="no" is-dependent="no"/>
  </class>
 
  <class name="VirtualHost">
