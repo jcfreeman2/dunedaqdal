@@ -17,8 +17,8 @@ and their modules, indicating their disabled state where set.
   ![environment](environment.png)
 
 The Application class has attibutes defining the application's
- `application_name` (executable name) and commandline parameters. It's
- `applicationEnvironment` relationship lists variables needed by the
+ `application_name` (executable name) and `commandline_parameters`. It's
+ `applicationEnvironment` relationship lists environment variables needed by the
  application in addition to those defined by the Session. An
  [example Python script](https://github.com/gcrone/dunedaqdal/blob/gcrone/Resource/scripts/app_environment.py)
  that prints out the environmanet for enabled applications in the
