@@ -23,7 +23,6 @@ daq_generate_dal(dunedaq.schema.xml
 
 daq_add_library(dalMethods.cpp
   test_circular_dependency.cpp disabled-components.cpp
-  DAL
   LINK_LIBRARIES oksdbinterfaces::oksdbinterfaces okssystem::okssystem
   logging::logging dunedaqdal_oks)
 
